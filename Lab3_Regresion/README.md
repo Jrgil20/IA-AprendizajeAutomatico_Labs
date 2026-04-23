@@ -30,8 +30,6 @@ Se quiere que haga un modelo de regresión polinómica para los datos del archiv
 Se quiere que presente los siguientes resultados: (i) la predicción para los valores de _X_ = 0, _X_ = 1, 5 ,
 _X_ = 3y _X_ = 5, (ii) y la gráfica que contenga los datos del problema junto con la predicción del modelo
 
-### 1
-
 
 obtenido, de manera similar como se muestra en la Figura 1. La entrega de la actividad debe hacerse en
 un Jupyter notebook llamadoprediccionPolinomio.ipynb.

@@ -6,10 +6,8 @@ Este documento funciona como informe técnico del sistema **PIMES** (*Predictor 
 
 ## Información de los autores
 
-- Autor 1: completar con nombre y apellido
-- Autor 2: completar con nombre y apellido
-
-Los identificadores del directorio del proyecto son `28059781` y `30175126`.
+- Autor 1: Jesús Gil — cédula `30175126`
+- Autor 2: Gabriel Castellano — cédula `28059781`
 
 ## Descripción del sistema
 

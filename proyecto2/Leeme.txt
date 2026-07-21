@@ -1,0 +1,25 @@
+# Connect6 Agent - Fase 1
+
+Este proyecto implementa un agente para jugar Connect6 con una arquitectura limpia.
+Actualmente cuenta con la lógica del tablero (validación de reglas y condición de victoria) y un agente aleatorio.
+
+## Requisitos Previos
+- Python 3.9+
+
+## Instalación y Ejecución
+
+1. Crear y activar el entorno virtual:
+   python3 -m venv venv
+   source venv/bin/activate  # En Linux/Mac
+   venv\Scripts\activate     # En Windows
+
+2. Instalar las dependencias:
+   pip install -r requirements.txt
+
+3. Ejecutar la simulación local:
+   python main.py
+
+## Estructura de Capas
+- `domain/`: Lógica pura y agnóstica de red (reglas del tablero).
+- `ai/`: Motores de decisión (actualmente RandomAgent).
+- `network/`: Cliente gRPC (actualmente un esqueleto simulado).

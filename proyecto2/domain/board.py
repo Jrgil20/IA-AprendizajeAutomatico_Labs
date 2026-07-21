@@ -11,6 +11,21 @@ class Connect6Board:
         """Retorna una lista de tuplas (x, y) con las casillas vacías."""
         return list(zip(*np.where(self.grid == 0)))
 
+    def is_full(self):
+        """Verifica si el tablero está lleno."""
+        return len(self.get_valid_moves()) == 0
+
+    def get_state(self, player_id):
+        """
+        Retorna el estado del tablero desde la perspectiva del jugador.
+        1.0 para sus fichas, -1.0 para las del oponente, 0.0 vacío.
+        Con forma (19, 19, 1) para Keras CNN.
+        """
+        state = np.zeros((self.size, self.size, 1), dtype=np.float32)
+        state[self.grid == player_id, 0] = 1.0
+        state[(self.grid != 0) & (self.grid != player_id), 0] = -1.0
+        return state
+
     def apply_move(self, player_id, moves):
         """
         Aplica un movimiento. Recibe el ID del jugador y una lista de coordenadas.
@@ -23,6 +38,25 @@ class Connect6Board:
             else:
                 raise ValueError(f"Movimiento inválido: la casilla ({x},{y}) está ocupada.")
         self.turn_count += 1
+
+    def step(self, player_id, move):
+        """
+        Aplica un movimiento unitario (x, y) como en Gym.
+        Retorna: (reward, done, is_valid)
+        """
+        x, y = move
+        if self.grid[x, y] != 0:
+            return -10.0, False, False # Recompensa altamente negativa por movimiento inválido
+            
+        self.grid[x, y] = player_id
+        
+        if self.check_victory(player_id):
+            return 1.0, True, True  # Victoria
+            
+        if self.is_full():
+            return 0.0, True, True  # Empate
+            
+        return 0.0, False, True     # Continua el juego
 
     def check_victory(self, player_id):
         """

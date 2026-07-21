@@ -1,8 +1,10 @@
 from domain.board import Connect6Board
 from ai.random_agent import RandomAgent
+from ai.dqn_agent import DQNAgent
 from network.client import Connect6Client
 import time
 import sys
+import os
 
 def print_board(board):
     print("   " + " ".join(f"{i:2}" for i in range(board.size)))
@@ -26,7 +28,15 @@ def main():
     
     # 1. Inicializar la lógica de dominio y los agentes
     board = Connect6Board()
-    agent_black = RandomAgent(player_id=1) # Negras (X)
+    
+    if os.path.exists("dqn_model.h5"):
+        print("[!] Modelo dqn_model.h5 encontrado. Cargando Agente DQN...")
+        agent_black = DQNAgent(player_id=1, epsilon=0.0) # Modo inferencia pura (sin exploración)
+        agent_black.load("dqn_model.h5")
+    else:
+        print("[!] No se encontró dqn_model.h5 (Debes ejecutar train.py). Usando RandomAgent.")
+        agent_black = RandomAgent(player_id=1) # Negras (X)
+        
     agent_white = RandomAgent(player_id=2) # Blancas (O)
     
     # 2. Inicializar cliente gRPC (simulado)

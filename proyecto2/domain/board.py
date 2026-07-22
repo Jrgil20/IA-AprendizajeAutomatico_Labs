@@ -7,13 +7,72 @@ class Connect6Board:
         self.grid = np.zeros((self.size, self.size), dtype=np.int8)
         self.turn_count = 0
 
+    def clone(self):
+        """Copia profunda y barata del tablero (para la simulación del MCTS)."""
+        new_board = Connect6Board()
+        new_board.grid = self.grid.copy()
+        new_board.turn_count = self.turn_count
+        return new_board
+
     def get_valid_moves(self):
         """Retorna una lista de tuplas (x, y) con las casillas vacías."""
         return list(zip(*np.where(self.grid == 0)))
 
+    def get_candidate_moves(self, radius=1):
+        """
+        Poda de relevancia (imprescindible en tableros 19x19): sólo considera
+        casillas vacías que estén a `radius` de alguna ficha ya colocada.
+        Si el tablero está vacío, devuelve únicamente el centro.
+        Reduce el factor de ramificación de 361 a unas pocas decenas.
+        """
+        occupied = np.argwhere(self.grid != 0)
+        if len(occupied) == 0:
+            c = self.size // 2
+            return [(c, c)]
+
+        candidates = set()
+        n = self.size
+        for (ox, oy) in occupied:
+            for dx in range(-radius, radius + 1):
+                for dy in range(-radius, radius + 1):
+                    x, y = int(ox) + dx, int(oy) + dy
+                    if 0 <= x < n and 0 <= y < n and self.grid[x, y] == 0:
+                        candidates.add((x, y))
+        return list(candidates)
+
     def is_full(self):
         """Verifica si el tablero está lleno."""
         return len(self.get_valid_moves()) == 0
+
+    def wins_at(self, player_id, x, y):
+        """
+        Chequeo RÁPIDO: ¿colocar `player_id` en (x, y) forma una línea de >=6?
+        Sólo examina las 4 direcciones que pasan por (x, y), en vez de escanear
+        todo el tablero. Se usa para detectar victoria/bloqueo inmediato y como
+        chequeo de terminalidad durante las simulaciones del MCTS.
+        """
+        x, y = int(x), int(y)
+        if self.grid[x, y] != 0 and self.grid[x, y] != player_id:
+            return False
+        n = self.size
+        directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
+        for dx, dy in directions:
+            count = 1  # la ficha hipotética en (x, y)
+            # hacia adelante
+            i, j = x + dx, y + dy
+            while 0 <= i < n and 0 <= j < n and self.grid[i, j] == player_id:
+                count += 1
+                i += dx
+                j += dy
+            # hacia atrás
+            i, j = x - dx, y - dy
+            while 0 <= i < n and 0 <= j < n and self.grid[i, j] == player_id:
+                count += 1
+                i -= dx
+                j -= dy
+            if count >= 6:
+                return True
+        return False
 
     def get_state(self, player_id):
         """

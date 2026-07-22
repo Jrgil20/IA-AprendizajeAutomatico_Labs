@@ -1,25 +1,100 @@
-# Connect6 Agent - Fase 1
+====================================================================
+ PROYECTO 2 - Agente de juego inteligente para Connect6
+ MCTS (UCB1/UCT) + Aprendizaje por Refuerzo Profundo + Heurísticas
+====================================================================
 
-Este proyecto implementa un agente para jugar Connect6 con una arquitectura limpia.
-Actualmente cuenta con la lógica del tablero (validación de reglas y condición de victoria) y un agente aleatorio.
+1. DESCRIPCIÓN
+--------------
+Agente que juega Connect6 (tablero 19x19, gana quien alinee 6 o más fichas).
+El algoritmo principal es Monte Carlo Tree Search (MCTS) con política de
+selección UCB1 (la fórmula UCT de la pág. 209 de Russell & Norvig). La política
+de simulación (playout) del MCTS usa una red neuronal profunda entrenada con
+aprendizaje por refuerzo (Q-learning): en la simulación, cada jugador coloca la
+ficha que le recomienda la red, en vez de una al azar (idea de AlphaGo).
 
-## Requisitos Previos
-- Python 3.9+
+Además incorpora estrategias propias de Connect6:
+  - Apertura al centro (9,9).
+  - Detección de victoria inmediata (completar 6 en línea).
+  - Bloqueo de la amenaza de victoria del rival.
+  - Poda de vecindad (sólo considera casillas cercanas a fichas existentes),
+    imprescindible por el enorme factor de ramificación del tablero 19x19.
 
-## Instalación y Ejecución
 
-1. Crear y activar el entorno virtual:
-   python3 -m venv venv
-   source venv/bin/activate  # En Linux/Mac
-   venv\Scripts\activate     # En Windows
+2. ESTRUCTURA DEL CÓDIGO
+------------------------
+  domain/board.py      Reglas del tablero (victoria H/V/diagonal), clonado,
+                       generación de candidatos y chequeo rápido de victoria.
+  ai/heuristics.py     Victoria/bloqueo inmediato y puntuación táctica de jugadas.
+  ai/mcts.py           Motor MCTS (Selección UCB1, Expansión, Simulación,
+                       Retropropagación) con playout policy conectable.
+  ai/dqn_agent.py      Red neuronal profunda (DQN) de refuerzo. Se usa como
+                       playout policy del MCTS.
+  ai/mcts_agent.py     Agente principal de turno (integra heurísticas + MCTS + red).
+  ai/random_agent.py   Agente aleatorio (oponente de entrenamiento y baseline).
+  network/client.py    Cliente gRPC real para Connect6 Arena (+ cliente simulado).
+  proto/connect6.proto Definición del servicio gRPC (GameServer) de Arena.
+  main.py              Partida local de demostración.
+  run_arena.py         Punto de entrada para jugar en Connect6 Arena (gRPC).
+  train.py             Entrenamiento por refuerzo de la red (CLI).
+  test_agent.py        Pruebas locales (no requieren TensorFlow).
+  Entrenamiento_Connect6_Colab.ipynb   Notebook auto-contenido para entrenar
+                                        la red en Google Colab con GPU.
 
-2. Instalar las dependencias:
-   pip install -r requirements.txt
 
-3. Ejecutar la simulación local:
-   python main.py
+3. REQUISITOS
+-------------
+  - Python 3.9 - 3.12  (IMPORTANTE: TensorFlow aún no soporta Python 3.13/3.14).
+  - Para SÓLO jugar/probar el MCTS con playout heurístico: basta numpy.
+  - Para entrenar la red neuronal: TensorFlow (ver requirements.txt).
 
-## Estructura de Capas
-- `domain/`: Lógica pura y agnóstica de red (reglas del tablero).
-- `ai/`: Motores de decisión (actualmente RandomAgent).
-- `network/`: Cliente gRPC (actualmente un esqueleto simulado).
+  Instalar dependencias:
+      pip install -r requirements.txt
+
+
+4. CÓMO EJECUTAR
+----------------
+4.1. Probar la lógica del agente (sin TensorFlow):
+        python test_agent.py
+
+4.2. Ver una partida de demostración local:
+        python main.py
+     Si existe un modelo entrenado (dqn_model.keras) se usa como playout del
+     MCTS; si no, el MCTS juega con su playout heurístico (no requiere TF).
+     Puedes ajustar las simulaciones del MCTS:  python main.py 200
+
+4.3. Entrenar la red neuronal (requiere TensorFlow):
+     RECOMENDADO en Google Colab con GPU, porque en 19x19 es costoso.
+        a) Sube/abre el notebook Entrenamiento_Connect6_Colab.ipynb en
+           https://colab.research.google.com
+        b) Entorno de ejecución -> Cambiar tipo de entorno -> GPU T4.
+        c) Entorno de ejecución -> Ejecutar todo.
+        d) Al terminar, descarga 'dqn_model.keras' y colócalo en esta carpeta.
+     (También puedes entrenar por línea de comandos: python train.py --episodes 3000)
+     Guía detallada de Colab en README_COLAB.md.
+
+
+5. JUGAR EN CONNECT6 ARENA (gRPC)
+---------------------------------
+El cliente gRPC real (network/client.py -> Connect6ArenaClient) implementa el
+servicio GameServer del starter-kit de Laura Parilli y Miguel Salomon
+(https://github.com/lauraparilli/connect6-starter-kit): stream bidireccional
+Play, registro de equipo, recepción del estado del tablero y envío de jugadas.
+
+Pasos (requiere Python 3.9-3.12):
+   1) Instalar gRPC:
+        pip install grpcio grpcio-tools
+   2) Generar los stubs de Python desde el .proto (una sola vez):
+        python -m grpc_tools.protoc -I proto --python_out=. --grpc_python_out=. proto/connect6.proto
+      (crea connect6_pb2.py y connect6_pb2_grpc.py)
+   3) Arrancar el agente conectado al servidor de Arena:
+        python run_arena.py --team MiEquipo --address localhost:50051
+      (la dirección también puede ir en la variable de entorno SERVER_ADDR)
+
+El agente detecta su color (negras/blancas) del servidor y coloca la cantidad de
+fichas que Arena indique (stones_required). Si existe dqn_model.keras se usa como
+playout del MCTS; si no, juega con el playout heurístico.
+
+
+6. AUTORES
+----------
+  (Completar con nombres y apellidos de los estudiantes)

@@ -14,6 +14,9 @@ class RandomAgent:
         
         if len(valid_moves) < num_stones:
             # Retorna lo que quede si no hay suficiente espacio para la cantidad solicitada
-            return valid_moves  
-            
-        return random.sample(valid_moves, num_stones)
+            chosen = valid_moves
+        else:
+            chosen = random.sample(valid_moves, num_stones)
+
+        # Casteo a int nativo (get_valid_moves devuelve numpy.int64).
+        return [(int(x), int(y)) for x, y in chosen]

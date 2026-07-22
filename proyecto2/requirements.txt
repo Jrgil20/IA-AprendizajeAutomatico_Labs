@@ -1,5 +1,12 @@
-grpcio==1.59.0
-grpcio-tools==1.59.0
-numpy==1.26.0
-tensorflow>=2.15.0
-h5py>=3.10.0
+# Núcleo (jugar/probar el MCTS con playout heurístico sólo necesita numpy)
+numpy>=1.26
+
+# Red neuronal de refuerzo (entrenamiento). Requiere Python 3.9-3.12.
+tensorflow>=2.15
+
+# Gráfica de la curva de entrenamiento en el notebook de Colab
+matplotlib>=3.7
+
+# Comunicación con la plataforma Connect6 Arena (gRPC)
+grpcio>=1.59
+grpcio-tools>=1.59

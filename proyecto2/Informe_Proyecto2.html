@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Informe Proyecto 2 - Agente Connect6 (MCTS + Deep RL)</title>
+<style>
+  @page { size: A4; margin: 2cm; }
+  :root { --ink:#1a1a1a; --muted:#555; --accent:#123a6b; --line:#c9d3e0; --soft:#f3f6fb; }
+  * { box-sizing: border-box; }
+  body { font-family: "Georgia","Times New Roman",serif; color:var(--ink);
+         line-height:1.5; font-size:11.5pt; margin:0; }
+  h1,h2,h3 { font-family:"Helvetica","Arial",sans-serif; color:var(--accent); line-height:1.25; }
+  h1 { font-size:20pt; margin:0 0 4px; }
+  h2 { font-size:14pt; margin:22px 0 8px; padding-bottom:4px; border-bottom:2px solid var(--line); }
+  h3 { font-size:12pt; margin:16px 0 4px; color:#1f2d40; }
+  p { margin:6px 0; text-align:justify; }
+  .sub { color:var(--muted); font-family:"Helvetica","Arial",sans-serif; font-size:11pt; }
+  .cover { border:1px solid var(--line); border-left:6px solid var(--accent);
+           padding:18px 22px; border-radius:6px; background:var(--soft); margin-bottom:8px; }
+  table { border-collapse:collapse; width:100%; margin:10px 0; font-size:10.5pt; }
+  th,td { border:1px solid var(--line); padding:6px 9px; text-align:left; vertical-align:top; }
+  th { background:var(--soft); font-family:"Helvetica","Arial",sans-serif; }
+  td.c, th.c { text-align:center; }
+  code { font-family:"Consolas","Courier New",monospace; background:var(--soft);
+         padding:1px 4px; border-radius:3px; font-size:10pt; }
+  pre { font-family:"Consolas","Courier New",monospace; background:var(--soft); color:var(--ink);
+        border:1px solid var(--line); padding:12px 14px; border-radius:6px;
+        font-size:8pt; line-height:1.25; overflow-x:auto; }
+  .formula { text-align:center; background:var(--soft); border:1px solid var(--line);
+             border-radius:6px; padding:12px; margin:12px 0; font-size:13pt;
+             font-family:"Cambria Math","Georgia",serif; }
+  .frac { display:inline-block; vertical-align:middle; text-align:center; }
+  .frac > .num { display:block; border-bottom:1.5px solid var(--ink); padding:0 6px; }
+  .frac > .den { display:block; padding:0 6px; }
+  .fig { margin:12px 0; }
+  .fig .cap { font-size:9.5pt; color:var(--muted); text-align:center; margin-top:4px;
+              font-family:"Helvetica","Arial",sans-serif; }
+  .board { font-size:7pt; }
+  ul,ol { margin:6px 0 6px 18px; } li { margin:3px 0; }
+  .note { background:#fff8e6; border:1px solid #e8d48a; border-radius:6px; padding:8px 12px; font-size:10pt; }
+  .kw { color:var(--accent); font-weight:bold; }
+  h2 { break-after:avoid; } h3 { break-after:avoid; }
+  table, pre, .formula, .fig { break-inside:avoid; }
+  .refs { font-size:10.5pt; } .refs li { margin:6px 0; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="sub">Universidad Católica Andrés Bello &nbsp;·&nbsp; Inteligencia Artificial</div>
+  <h1>Proyecto 2 — Agente de juego inteligente para Connect6</h1>
+  <div class="sub">Monte Carlo Tree Search (MCTS) con selección UCB1 y aprendizaje por
+  refuerzo profundo en la política de simulación</div>
+</div>
+
+<h2>1. Información de los autores</h2>
+<table>
+  <tr><th>Cédula de Identidad</th><th>Nombre y Apellido</th></tr>
+  <tr><td class="c">30175126</td><td>Jesús Rodolfo Gil</td></tr>
+  <tr><td class="c">28059781</td><td>Gabriel David</td></tr>
+</table>
+
+<h2>2. Descripción del sistema</h2>
+
+<h3>2.1. Objetivo y reglas del juego</h3>
+<p>Connect6 se juega sobre un tablero de 19×19 intersecciones. El primer jugador (negras)
+coloca una ficha en su primer turno y, a partir de entonces, cada jugador coloca dos fichas
+por turno. Gana quien forme una línea de seis o más fichas propias en sentido horizontal,
+vertical o diagonal. El objetivo del proyecto es un agente capaz de jugar competitivamente
+contra un humano u otro agente.</p>
+
+<h3>2.2. Arquitectura general del agente</h3>
+<p>El algoritmo principal es <span class="kw">Monte Carlo Tree Search (MCTS)</span>
+(capítulo 6 de Russell &amp; Norvig), potenciado con una <span class="kw">red neuronal
+profunda entrenada por refuerzo</span> que actúa como política de simulación, siguiendo la
+idea del sistema AlphaGo. Sobre esa base se añaden <span class="kw">heurísticas propias de
+Connect6</span>. Para cada turno, el agente decide sus fichas con la siguiente prioridad:</p>
+<ol>
+  <li><b>Apertura:</b> si el tablero está vacío, juega al centro (9,9).</li>
+  <li><b>Victoria inmediata:</b> si puede completar seis en línea, lo hace.</li>
+  <li><b>Bloqueo:</b> si el rival amenaza con ganar en su siguiente ficha, lo bloquea.</li>
+  <li><b>Búsqueda MCTS:</b> en cualquier otro caso ejecuta MCTS para elegir la ficha.</li>
+</ol>
+<p>El código se organiza en capas: <code>domain/</code> (reglas del tablero),
+<code>ai/</code> (heurísticas, MCTS, red neuronal y agente) y <code>network/</code>
+(cliente para la plataforma Connect6 Arena).</p>
+
+<h3>2.3. Representación del estado</h3>
+<p>El tablero se guarda como una matriz 19×19 con valores 0 (vacío), 1 (negras) y 2 (blancas).
+Para la red neuronal, el estado se codifica desde la óptica del jugador que mueve como un
+tensor de forma (19,19,1): 1.0 en sus fichas, −1.0 en las del rival y 0.0 en los vacíos.
+Esta representación relativa permite que la misma red evalúe a ambos jugadores.</p>
+
+<h3>2.4. Algoritmo principal: MCTS</h3>
+<p>El MCTS construye incrementalmente un árbol de búsqueda repitiendo, en cada simulación,
+cuatro fases:</p>
+<ol>
+  <li><b>Selección:</b> desde la raíz se desciende eligiendo hijos según la política UCB1
+      (sección 2.5) hasta llegar a un nodo no expandido del todo.</li>
+  <li><b>Expansión:</b> se añade un nodo hijo correspondiente a una jugada aún no probada.</li>
+  <li><b>Simulación (playout):</b> se juega una partida rápida desde ese nodo hasta un estado
+      terminal (o un límite de profundidad) usando la política de simulación (sección 2.6).</li>
+  <li><b>Retropropagación:</b> el resultado (+1 gana negras, −1 gana blancas, 0 empate) se
+      propaga hacia la raíz actualizando las visitas <code>N</code> y el valor acumulado
+      <code>W</code> de cada nodo del camino.</li>
+</ol>
+<p>Como el turno coloca dos fichas, el estado de búsqueda lleva la cuenta de las fichas que le
+restan al jugador en el turno; cuando llegan a cero, el turno pasa al rival. Tras todas las
+simulaciones, el agente juega la ficha del hijo <i>más visitado</i> de la raíz (jugada más
+robusta).</p>
+
+<h3>2.5. Política de selección: UCB1 / UCT</h3>
+<p>La política de selección es <span class="kw">UCB1</span> (la fórmula de la UCT presentada en
+la página 209 de Russell &amp; Norvig). Para elegir el hijo se maximiza:</p>
+<div class="formula">
+  UCB1(hijo) =
+  <span class="frac"><span class="num">W(hijo)</span><span class="den">N(hijo)</span></span>
+  &nbsp;+&nbsp; C&thinsp;&middot;&thinsp;&radic;<span style="border-top:1.5px solid #1a1a1a; padding:0 4px;">
+  <span class="frac"><span class="num">ln&nbsp;N(padre)</span><span class="den">N(hijo)</span></span></span>
+</div>
+<p>El primer término (explotación) es el valor promedio del nodo; el segundo (exploración)
+favorece a los nodos poco visitados. La constante <code>C</code> equilibra ambos
+(se usa <code>C ≈ 1.4 ≈ √2</code>). El valor <code>W</code> se guarda desde la óptica del
+jugador que movió hacia el nodo, de modo que el signo de la recompensa se ajusta en la
+retropropagación según ese jugador.</p>
+
+<h3>2.6. Política de simulación: red neuronal profunda y aprendizaje por refuerzo</h3>
+<p>En el MCTS puro, la simulación juega movimientos al azar. La mejora clave de este proyecto
+—y lo que pide el enunciado— es reemplazar ese azar por la <span class="kw">recomendación de
+una red neuronal profunda entrenada con aprendizaje por refuerzo</span>. Así, en la simulación
+cada jugador coloca la ficha que la red considera mejor.</p>
+<p><b>Arquitectura de la red (DQN).</b> Es una red convolucional (CNN) que recibe el estado
+(19,19,1) y produce el valor Q de colocar una ficha en cada una de las 361 intersecciones:</p>
+<ul>
+  <li>Conv2D 32 filtros (3×3), ReLU, <i>padding same</i>.</li>
+  <li>Conv2D 64 filtros (3×3), ReLU, <i>padding same</i>.</li>
+  <li>Flatten → Densa 256 (ReLU) → Densa 361 (salida lineal, un valor Q por casilla).</li>
+</ul>
+<p><b>Aprendizaje por refuerzo (Q-learning profundo).</b> La red se entrena jugando muchas
+partidas. Los ingredientes son:</p>
+<ul>
+  <li><b>Recompensa:</b> +1 al ganar, −1 al perder, 0 en el resto (recompensa dispersa).</li>
+  <li><b>Búfer de repetición (replay buffer):</b> almacena transiciones
+      (estado, acción, recompensa, estado siguiente, fin) y se entrena con mini-lotes
+      aleatorios, rompiendo la correlación temporal.</li>
+  <li><b>Red objetivo (target network):</b> copia de la red que se actualiza periódicamente y
+      estabiliza el cálculo del valor objetivo de Bellman
+      <code>y = r + γ·max<sub>a'</sub> Q<sub>target</sub>(s', a')</code>.</li>
+  <li><b>Política ε-greedy:</b> con probabilidad ε explora una jugada válida al azar y, si no,
+      explota la mejor según la red. ε decae por episodio (de 1.0 hacia 0.1).</li>
+  <li><b>Optimización:</b> pérdida de Huber y optimizador Adam.</li>
+</ul>
+<p>El modelo entrenado (<code>dqn_model.keras</code>) se conecta al MCTS como política de
+simulación mediante el método <code>DQNAgent.policy()</code>.</p>
+
+<h3>2.7. Heurísticas y estrategias propias de Connect6</h3>
+<ul>
+  <li><b>Apertura:</b> primera ficha de negras al centro del tablero (9,9).</li>
+  <li><b>Victoria inmediata:</b> detección rápida de la casilla que completa seis en línea.</li>
+  <li><b>Bloqueo:</b> detección de la casilla con la que el rival ganaría, para ocuparla.</li>
+  <li><b>Puntuación táctica:</b> valora cada casilla por cuántas fichas propias extiende y
+      cuántas líneas del rival corta; guía la simulación cuando no hay red disponible.</li>
+</ul>
+
+<h3>2.8. Poda de vecindad (control del factor de ramificación)</h3>
+<p>Un tablero 19×19 tiene 361 jugadas iniciales, inviable para el MCTS. Por ello el agente
+sólo considera casillas vacías cercanas (radio 1) a fichas ya colocadas, y adicionalmente
+restringe la búsqueda a las mejores candidatas según la heurística. Esto reduce el factor de
+ramificación de 361 a unas pocas decenas, concentrando la búsqueda donde importa.</p>
+
+<h3>2.9. Integración con la plataforma Connect6 Arena (gRPC)</h3>
+<p>El enunciado exige jugar en la plataforma Connect6 Arena, cuyo servidor se comunica con los
+agentes por medio de la librería gRPC. El agente expone el método
+<code>get_action(board, is_first_turn)</code>, que devuelve la lista de fichas del turno
+(una en el primer turno de negras, dos en el resto). El módulo <code>network/client.py</code>
+es el punto de integración: traduce los mensajes gRPC del servidor (estado del tablero y turno)
+a llamadas a <code>get_action</code> y envía de vuelta las fichas elegidas.</p>
+
+<h2>3. Resultados experimentales</h2>
+<p>La red se entrenó en Google Colab (GPU) durante 300 episodios contra un agente aleatorio.
+Luego se evaluó, jugando de negras contra un rival aleatorio, en tres configuraciones:</p>
+<table>
+  <tr><th>Agente (juega negras)</th><th class="c">Victorias vs. aleatorio</th></tr>
+  <tr><td>MCTS + red neuronal (agente completo)</td><td class="c">100%</td></tr>
+  <tr><td>MCTS + política de simulación heurística</td><td class="c">100%</td></tr>
+  <tr><td>Red neuronal sola (sin MCTS)</td><td class="c">83%</td></tr>
+</table>
+<p>La lectura relevante es la comparación <i>red sola</i> (83%) frente a <i>red dentro del
+MCTS</i> (100%): la búsqueda en árbol corrige los errores puntuales de la red, que es
+justamente el beneficio de combinar MCTS con aprendizaje por refuerzo profundo. Frente a un
+rival aleatorio la tarea es sencilla y ambas variantes de MCTS alcanzan el 100%; para aislar
+mejor el aporte de la red convendría enfrentar el agente contra oponentes más fuertes.</p>
+<p>La curva de recompensa durante el entrenamiento es ruidosa (valores por episodio entre −1 y
++1, propio de una recompensa dispersa de ganar/perder), con una media móvil que se mantiene por
+encima de cero y con picos hacia +0.5, lo que evidencia el aprendizaje.</p>
+
+<div class="fig">
+  <pre class="board">     0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18
+ 0   .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .
+ 1   .  .  .  .  .  .  X  O  .  .  .  .  .  .  .  .  .  .  .
+ 2   .  .  .  .  .  .  O  .  .  O  .  .  .  .  .  .  .  .  .
+ 3   .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .
+ 4   .  .  O  .  .  .  .  .  .  .  .  .  .  .  .  O  .  .  .
+ 5   .  .  .  .  .  .  .  .  .  .  .  .  O  .  .  .  .  .  .
+ 6   .  O  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .
+ 7   .  .  .  O  .  .  .  .  X  X  .  .  .  .  .  .  .  .  O
+ 8   .  .  .  .  .  .  .  .  X  .  X  .  .  .  .  .  .  .  .
+ 9   .  .  .  .  .  .  .  X  X  X  X  O  .  .  .  .  .  .  O
+10   .  .  .  .  .  .  .  .  X  X  .  O  .  .  .  .  .  .  .
+11   .  .  .  .  .  .  .  X  X  X  .  .  .  .  .  .  .  .  .
+12   .  .  .  .  .  .  .  .  X  .  .  .  .  .  .  .  .  .  .
+13   .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .</pre>
+  <div class="cap">Figura 1. Posición final de una partida ganada por el agente (X = negras,
+  O = blancas). Las negras forman una línea vertical de seis fichas en la columna 8
+  (filas 7 a 12).</div>
+</div>
+
+<div class="note"><b>Figura de entrenamiento:</b> puede insertarse aquí la gráfica de la curva
+de recompensa generada por el notebook de Colab (archivo PNG descargable), como Figura 2.</div>
+
+<h2>4. Implementación y ejecución</h2>
+<p>El proyecto está implementado en Python. Estructura principal:</p>
+<table>
+  <tr><th>Archivo</th><th>Función</th></tr>
+  <tr><td><code>domain/board.py</code></td><td>Reglas del tablero y utilidades para la búsqueda.</td></tr>
+  <tr><td><code>ai/heuristics.py</code></td><td>Victoria/bloqueo inmediato y puntuación de jugadas.</td></tr>
+  <tr><td><code>ai/mcts.py</code></td><td>Motor MCTS con selección UCB1 y playout conectable.</td></tr>
+  <tr><td><code>ai/dqn_agent.py</code></td><td>Red neuronal de refuerzo (DQN) usada en el playout.</td></tr>
+  <tr><td><code>ai/mcts_agent.py</code></td><td>Agente principal (heurísticas + MCTS + red).</td></tr>
+  <tr><td><code>network/client.py</code></td><td>Cliente para Connect6 Arena (gRPC).</td></tr>
+  <tr><td><code>main.py</code> / <code>train.py</code></td><td>Partida de demostración / entrenamiento.</td></tr>
+  <tr><td><code>Entrenamiento_Connect6_Colab.ipynb</code></td><td>Notebook auto-contenido para entrenar en GPU.</td></tr>
+</table>
+<p>El detalle de ejecución está en <code>Leeme.txt</code>. En resumen: <code>python test_agent.py</code>
+prueba la lógica (sin TensorFlow); <code>python main.py</code> juega una partida de demostración;
+y el entrenamiento de la red se realiza en Colab con GPU por su costo computacional.</p>
+
+<h2>5. Conclusiones</h2>
+<p>Se implementó un agente de Connect6 cuyo algoritmo base es MCTS con política de selección
+UCB1, integrando una red neuronal profunda entrenada por refuerzo como política de simulación,
+más heurísticas propias del juego. El agente gana el 100% de las partidas evaluadas contra un
+oponente aleatorio, y los resultados muestran que la búsqueda en árbol mejora las decisiones de
+la red (de 83% a 100%). El diseño en capas y la política de simulación conectable permiten
+tanto jugar sin la red (playout heurístico) como reforzar el juego con el modelo entrenado.</p>
+
+<h2>6. Referencias bibliográficas</h2>
+<ol class="refs">
+  <li>Stuart Russell y Peter Norvig. <i>Artificial Intelligence: A Modern Approach</i>.
+      Pearson, 4.ª edición, 2022. (MCTS y fórmula UCB1/UCT, cap. 6, pág. 209).</li>
+  <li>David Silver, Aja Huang, Chris J. Maddison, et al. «Mastering the game of Go with deep
+      neural networks and tree search». <i>Nature</i>, 529(7587):484–489, 2016.</li>
+  <li>Wikipedia contributors. «Connect6 — Wikipedia, the free encyclopedia», 2022.
+      <span class="sub">https://en.wikipedia.org/wiki/Connect6</span></li>
+  <li>Laura Parilli y Miguel Salomón. «Connect6 Arena» (starter-kit), 2026.
+      <span class="sub">https://github.com/lauraparilli/connect6-starter-kit</span></li>
+  <li>gRPC. Librería de comunicación de alto rendimiento.
+      <span class="sub">https://grpc.io/</span></li>
+</ol>
+
+</body>
+</html>
